@@ -10,32 +10,42 @@
 |----------|-----------|---------|
 | `standard_user` | Fully functional | All happy-path and core tests |
 | `locked_out_user` | Login is blocked by the app | Negative auth / error state tests |
-| `problem_user` | Broken product images, some interactions fail | Visual / data assertion edge cases |
-| `performance_glitch_user` | Login and page loads are artificially delayed | Timeout / wait handling tests |
-| `error_user` | Intermittent form errors on checkout | Senior/Lead error-handling scenarios |
+| `problem_user` | Broken product images, some interactions fail | Visual regression comparison (TC-09) |
+| `performance_glitch_user` | Login and page loads are artificially delayed | Timeout / wait handling tests (TC-01) |
+| `error_user` | Triggers 503 telemetry error during checkout `finish()` | Error-handling scenarios (TC-30) |
 
 ## Available Modules
 
 | Module | What it covers |
 |--------|---------------|
 | Login / Auth | Username + password form, session cookie, error message on bad credentials |
-| Product Catalogue | Product grid, sort by name/price, product detail page |
-| Cart | Add / remove items, item count badge on header icon |
+| Product Catalogue | Product grid, sort by name/price, product detail page, visual regression |
+| Cart | Add / remove items, item count badge on header icon, cart page content |
 | Checkout | 3-step flow: cart → customer info → order summary → confirmation |
-| Logout | Accessible via the burger menu |
+| Logout | Accessible via the burger menu, session invalidation |
 
 ---
 
 ## Key Selectors Reference
 
 **Login:** `[data-test="username"]` · `[data-test="password"]` · `[data-test="login-button"]` · `[data-test="error"]`  
-**Header:** `[data-test="open-menu"]` · `[data-test="shopping-cart-link"]` · `[data-test="shopping-cart-badge"]`  
-**Inventory:** `[data-test="product_sort_container"]` · `[data-test="inventory-item-name"]` · `[data-test="inventory-item-price"]` · `[data-test="add-to-cart-{product-name}"]`  
-**Cart:** `[data-test="cart-list"]` · `[data-test="remove-{product-name}"]` · `[data-test="continue-shopping"]` · `[data-test="checkout"]`  
+**Header:** `#react-burger-menu-btn` · `[data-test="shopping-cart-link"]` · `[data-test="shopping-cart-badge"]`  
+**Inventory:** `[data-test="product-sort-container"]` · `.active_option` · `[data-test="inventory-item-name"]` · `[data-test="inventory-item-price"]` · `[data-test="add-to-cart-{slug}"]` · `[data-test="remove-{slug}"]`  
+**Cart:** `[data-test="cart-list"]` · `.cart_item` · `[data-test="inventory-item-name"]` · `[data-test="inventory-item-price"]` · `[data-test="continue-shopping"]` · `[data-test="checkout"]`  
 **Checkout Step 1:** `[data-test="firstName"]` · `[data-test="lastName"]` · `[data-test="postalCode"]` · `[data-test="continue"]` · `[data-test="cancel"]`  
-**Checkout Step 2:** `[data-test="subtotal-label"]` · `[data-test="tax-label"]` · `[data-test="total-label"]` · `[data-test="finish"]`  
-**Checkout Step 3:** `[data-test="complete-header"]` · `[data-test="complete-text"]` · `[data-test="back-to-products"]`  
-**Sidebar:** `[data-test="logout-sidebar-link"]` · `[data-test="inventory-sidebar-link"]` · `[data-test="reset-sidebar-link"]`
+**Checkout Step 2:** `[data-test="checkout-summary-container"]` · `.cart_item` · `[data-test="subtotal-label"]` · `[data-test="tax-label"]` · `[data-test="total-label"]` · `[data-test="finish"]` · `[data-test="cancel"]`  
+**Checkout Complete:** `[data-test="complete-header"]` · `[data-test="complete-text"]` · `[data-test="back-to-products"]`  
+**Sidebar:** `[data-test="logout-sidebar-link"]`
+
+---
+
+## Data Sources
+
+| File | Purpose |
+|------|---------|
+| `src/data/users.json` | Credentials for all 5 user accounts |
+| `src/data/products.json` | Source of truth for all 6 products (name, description, price, imageSrc, detailUrl) sorted A to Z |
+| `src/data/checkoutForms.ts` | Typed form data for checkout — `standard` (`John Doe, 12345`) and `alternate` (`Jane Smith, 90210`) |
 
 ---
 
@@ -43,19 +53,20 @@
 
 ---
 
-### TC-01 — Standard User Successful Login
+### TC-01 — Successful Login
 
-**User:** `standard_user`  
-**Goal:** Verify that a valid user is authenticated and redirected to the inventory page.
+**Users:** `standard_user` · `performance_glitch_user` *(parametrized — runs once per user)*  
+**Goal:** Verify that valid users are authenticated and redirected to the inventory page. For `performance_glitch_user`, verify the login completes despite an artificial delay.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Navigate to `https://www.saucedemo.com/` | Page loads. Tab title is "Swag Labs". Login form is visible with username, password fields, and Login button. Credentials hint at the bottom lists all accepted usernames and password. No error banner is shown. |
-| 2 | Fill `[data-test="username"]` with `standard_user` | Value "standard_user" appears in the field. |
-| 3 | Fill `[data-test="password"]` with `secret_sauce` | Characters are masked (dots/asterisks). |
-| 4 | Click `[data-test="login-button"]` | URL changes to `/inventory.html`. Page heading "Products" is visible. Six product cards are displayed. Header shows hamburger menu and cart icon. No error banner is visible. |
+| 1 | Navigate to `https://www.saucedemo.com/` | Page loads. Login form is visible. No error banner. |
+| 2 | Fill `[data-test="username"]` with the user's username. Fill `[data-test="password"]` with `secret_sauce`. | Fields are filled. |
+| 3 | Click `[data-test="login-button"]` | URL changes to `/inventory.html` (within 15 s for `performance_glitch_user`). Page heading "Products" is visible. Six product cards are displayed. No error banner is visible. |
+
+> **Note:** `performance_glitch_user` will exhibit a noticeable delay before the page transitions. The test allows up to 15 seconds for the URL assertion. This is expected behaviour.
 
 ---
 
@@ -69,9 +80,7 @@
 | # | Action | Expected Result |
 |---|--------|-----------------|
 | 1 | Navigate to `https://www.saucedemo.com/` | Login page is visible. |
-| 2 | Fill `[data-test="username"]` with `locked_out_user` | Value appears in the field. |
-| 3 | Fill `[data-test="password"]` with `secret_sauce` | Characters are masked. |
-| 4 | Click `[data-test="login-button"]` | URL remains on `/`. Error banner `[data-test="error"]` is visible with text: **"Epic sadface: Sorry, this user has been locked out."** Red error border appears on both input fields. Red "X" close buttons appear on both fields. |
+| 2 | Fill credentials for `locked_out_user` and click `[data-test="login-button"]`. | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Sorry, this user has been locked out."** |
 
 ---
 
@@ -85,8 +94,7 @@
 | # | Action | Expected Result |
 |---|--------|-----------------|
 | 1 | Navigate to `https://www.saucedemo.com/` | Login page is visible. |
-| 2 | Fill `[data-test="username"]` with `standard_user`. Fill `[data-test="password"]` with `wrong_password_123`. | Fields are filled as described. |
-| 3 | Click `[data-test="login-button"]` | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Username and password do not match any user in this service"**. Red error border appears on both fields. |
+| 2 | Fill `[data-test="username"]` with `standard_user`. Fill `[data-test="password"]` with `wrong_password_123`. Click `[data-test="login-button"]`. | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Username and password do not match any user in this service"**. |
 
 ---
 
@@ -99,8 +107,7 @@
 | # | Action | Expected Result |
 |---|--------|-----------------|
 | 1 | Navigate to `https://www.saucedemo.com/` | Login page is visible. Both fields are empty. |
-| 2 | Leave `[data-test="username"]` empty. Fill `[data-test="password"]` with `secret_sauce`. | Password is filled; username remains empty. |
-| 3 | Click `[data-test="login-button"]` | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Username is required"**. |
+| 2 | Fill `[data-test="password"]` with `secret_sauce`. Click `[data-test="login-button"]`. | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Username is required"**. |
 
 ---
 
@@ -113,14 +120,13 @@
 | # | Action | Expected Result |
 |---|--------|-----------------|
 | 1 | Navigate to `https://www.saucedemo.com/` | Login page is visible. Both fields are empty. |
-| 2 | Fill `[data-test="username"]` with `standard_user`. Leave `[data-test="password"]` empty. | Username is filled; password remains empty. |
-| 3 | Click `[data-test="login-button"]` | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Password is required"**. |
+| 2 | Fill `[data-test="username"]` with `standard_user`. Click `[data-test="login-button"]`. | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Password is required"**. |
 
 ---
 
 ### TC-06 — Both Fields Empty
 
-**Goal:** Verify that username is validated before password when both are empty.
+**Goal:** Verify that username is validated before password when both fields are empty.
 
 **Steps:**
 
@@ -128,21 +134,6 @@
 |---|--------|-----------------|
 | 1 | Navigate to `https://www.saucedemo.com/` | Login page is visible. Both fields are empty. |
 | 2 | Click `[data-test="login-button"]` without filling any field. | URL remains on `/`. Error banner is visible with text: **"Epic sadface: Username is required"**. |
-
----
-
-### TC-07 — Performance Glitch User — Delayed Login
-
-**User:** `performance_glitch_user`  
-**Goal:** Verify that login completes successfully despite an artificially delayed server response.
-
-**Steps:**
-
-| # | Action | Expected Result |
-|---|--------|-----------------|
-| 1 | Navigate to `https://www.saucedemo.com/` | Login page is visible. |
-| 2 | Fill `[data-test="username"]` with `performance_glitch_user`. Fill `[data-test="password"]` with `secret_sauce`. | Fields are filled. |
-| 3 | Click `[data-test="login-button"]` | A noticeable delay (~5 seconds) occurs before any page transition. This is expected behavior. Eventually URL changes to `/inventory.html`. Inventory page loads correctly. No error banner is visible. |
 
 ---
 
@@ -155,9 +146,51 @@
 | # | Action | Expected Result |
 |---|--------|-----------------|
 | 1 | Navigate to `https://www.saucedemo.com/` | Login page is visible. |
-| 2 | Fill `[data-test="username"]` with `standard_user`. Fill `[data-test="password"]` with `bad_password_xyz`. | Fields are filled. |
-| 3 | Click `[data-test="login-button"]` | Error banner `[data-test="error"]` is visible. Red "X" close buttons appear on both input fields. |
-| 4 | Click the X button on the `[data-test="error"]` banner. | The error banner is no longer visible. Red error borders on both input fields are removed. The form remains interactive and ready for re-entry. |
+| 2 | Fill `[data-test="username"]` with `standard_user`. Fill `[data-test="password"]` with `bad_password_xyz`. Click `[data-test="login-button"]`. | Error banner `[data-test="error"]` is visible. |
+| 3 | Click the X button inside `[data-test="error"]`. | The error banner is no longer visible. Red error borders on both input fields are removed. |
+
+---
+
+### TC-35 — Session Cookie Is Set with Correct Username After Login
+
+**User:** `standard_user`  
+**Goal:** Verify that a successful login writes the `session-username` cookie with the authenticated user's username as its value.
+
+**Steps:**
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | Navigate to `https://www.saucedemo.com/` and log in as `standard_user`. | URL changes to `/inventory.html`. |
+| 2 | Inspect browser cookies for the current context. | A cookie named `session-username` is present. Its `value` equals **`standard_user`**. |
+
+---
+
+### TC-36 — Session Persists Across Page Reload
+
+**User:** `standard_user`  
+**Goal:** Verify that the session cookie is not discarded when the page is reloaded, keeping the user authenticated.
+
+**Steps:**
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | Log in as `standard_user`. Land on `/inventory.html`. | Cookie `session-username` = `standard_user` is present. |
+| 2 | Reload the page (`page.reload()`). | URL remains on `/inventory.html` — the user is not redirected to the login page. Cookie `session-username` is still present with the correct value. |
+
+---
+
+### TC-37 — Direct Navigation to Protected Route Without Session Cookie Redirects to Login
+
+**User:** Guest (unauthenticated context, no cookie)  
+**Goal:** Verify that the application enforces server-side route protection: accessing a protected URL without any session cookie results in a redirect and an error message.
+
+**Steps:**
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | In a fresh, unauthenticated browser context, navigate directly to `https://www.saucedemo.com/inventory.html`. | Application redirects to `https://www.saucedemo.com/`. URL is `/`. Error banner shows: **"Epic sadface: You can only access '/inventory.html' when you are logged in."** |
+
+> **Note:** This differs from TC-32, which tests the redirect *after logout* (cookie is present but invalidated). TC-37 uses a guest context where the cookie was never set — it validates the guard independently of the logout flow.
 
 ---
 
@@ -169,13 +202,17 @@
 
 ### TC-09 — Inventory Page Displays Product Grid Correctly
 
-**Goal:** Verify the full structure and content of the inventory page.
+**Users:** `standard_user` · `problem_user` *(parametrized — runs once per user)*  
+**Goal:** Verify the full structure of the inventory page and capture a visual baseline. For `problem_user`, the screenshot is compared against the `standard_user` baseline to expose visual defects (broken images).
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Log in as `standard_user` and land on `/inventory.html`. | Page title `[data-test="title"]` shows "Products". Exactly 6 product cards are visible. Each card shows: product image, product name, description, price (e.g., "$9.99"), and an "Add to cart" button. Sort dropdown `[data-test="product_sort_container"]` is present and defaults to "Name (A to Z)". Header shows the cart icon and hamburger menu. |
+| 1 | Log in with the given user and navigate to `/inventory.html`. | `[data-test="title"]` shows **"Products"**. Exactly 6 product cards are visible (`.inventory_item`). Sort dropdown `.active_option` shows **"Name (A to Z)"**. `#react-burger-menu-btn` and `[data-test="shopping-cart-link"]` are visible in the header. |
+| 2 | Capture a full-page screenshot and compare against the baseline `inventory-initial-load.png`. | **`standard_user`:** Screenshot matches the baseline within a 2% pixel difference ratio. **`problem_user`:** Screenshot does NOT match the baseline — pixel diff exposes broken product images. This failure is the expected and intended outcome of this test. |
+
+> **Visual baseline:** Generated on first run for `standard_user`. `problem_user` is expected to fail the screenshot assertion, demonstrating a visual regression.
 
 ---
 
@@ -187,7 +224,7 @@
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Land on `/inventory.html`. Inspect the product order without changing the sort dropdown. | Products are displayed alphabetically from A to Z. The first product name comes before the last product name alphabetically. The sort dropdown shows "Name (A to Z)" selected. |
+| 1 | Land on `/inventory.html`. Collect all `[data-test="inventory-item-name"]` text values. | The collected names are already in ascending alphabetical order. No sort action needed. |
 
 ---
 
@@ -199,8 +236,7 @@
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Land on `/inventory.html`. | Default sort is "Name (A to Z)". |
-| 2 | Select "Name (Z to A)" from `[data-test="product_sort_container"]`. | Products reorder immediately. The first product in the list now comes after the last one alphabetically. The order is the reverse of the A to Z sort. |
+| 1 | Land on `/inventory.html`. Select option `za` from `[data-test="product-sort-container"]`. | Products reorder. Collected names match the reverse of the A to Z order. |
 
 ---
 
@@ -212,8 +248,7 @@
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Land on `/inventory.html`. | Default sort is applied. |
-| 2 | Select "Price (low to high)" from `[data-test="product_sort_container"]`. | Products reorder. The first product has the lowest price. The last product has the highest price. Prices increase from top to bottom. |
+| 1 | Land on `/inventory.html`. Select option `lohi` from `[data-test="product-sort-container"]`. | Products reorder. Parsed prices from `[data-test="inventory-item-price"]` form a non-decreasing sequence. |
 
 ---
 
@@ -225,64 +260,35 @@
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Land on `/inventory.html`. | Default sort is applied. |
-| 2 | Select "Price (high to low)" from `[data-test="product_sort_container"]`. | Products reorder. The first product has the highest price. The last product has the lowest price. Prices decrease from top to bottom. |
+| 1 | Land on `/inventory.html`. Select option `hilo` from `[data-test="product-sort-container"]`. | Products reorder. Parsed prices form a non-increasing sequence. |
 
 ---
 
 ### TC-14 — Navigate to Product Detail Page and Back
 
-**Goal:** Verify that clicking a product name opens the detail page with all expected elements, and the back button returns to the inventory.
+**Goal:** Verify that clicking the first product (default A to Z = "Sauce Labs Backpack") opens the detail page with data matching `src/data/products.json`, and the back button returns to the inventory.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Land on `/inventory.html`. | Six product cards are visible. |
-| 2 | Click on the name of any product (e.g., "Sauce Labs Backpack"). | URL changes to `/inventory-item.html?id={n}`. The product detail page loads. `[data-test="inventory-item-name"]` shows the correct product name. `[data-test="inventory-item-desc"]` shows the product description. `[data-test="inventory-item-price"]` shows the product price. A product image is displayed. `[data-test="add-to-cart"]` button is visible and labeled "Add to cart". `[data-test="back-to-products"]` button is visible. |
-| 3 | Click `[data-test="back-to-products"]`. | URL returns to `/inventory.html`. The full product grid is visible again. |
+| 1 | Land on `/inventory.html`. Click the first `[data-test="inventory-item-name"]`. | URL changes to `/inventory-item.html?id=4`. |
+| 2 | Assert product data against `products[0]` from `products.json`. | `[data-test="inventory-item-name"]` = **"Sauce Labs Backpack"**. `[data-test="inventory-item-desc"]` = correct description. `[data-test="inventory-item-price"]` = **"$29.99"**. `[data-test="add-to-cart"]` and `[data-test="back-to-products"]` are visible. |
+| 3 | Click `[data-test="back-to-products"]`. | URL returns to `/inventory.html`. Six product cards are visible. |
 
 ---
 
 ### TC-15 — Add to Cart from Product Detail Page
 
-**Goal:** Verify that a product can be added to the cart from the product detail page, and the button label and badge update accordingly.
+**Goal:** Verify that a product can be added to the cart from the detail page and that badge and remove button reflect the change.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Navigate to any product detail page. | `[data-test="add-to-cart"]` is labeled "Add to cart". No cart badge is visible (or badge shows 0). |
-| 2 | Click `[data-test="add-to-cart"]`. | The button label changes to "Remove". `[data-test="shopping-cart-badge"]` appears in the header and shows "1". |
-| 3 | Click `[data-test="back-to-products"]`. | Returns to `/inventory.html`. The corresponding product card shows "Remove" button. Badge still shows "1". |
-
----
-
-### TC-16 — Problem User — Broken Product Images Are Shown
-
-**User:** `problem_user`  
-**Goal:** Verify that `problem_user` can access the inventory page, but product images are visually broken (wrong images shown).
-
-**Steps:**
-
-| # | Action | Expected Result |
-|---|--------|-----------------|
-| 1 | Log in as `problem_user` / `secret_sauce`. | URL changes to `/inventory.html`. No error banner is visible. |
-| 2 | Inspect the product images on the inventory page. | All product images display the same incorrect image (visual defect — expected behavior for this user). Product names, descriptions, and prices are still present. The page is otherwise functional. |
-
----
-
-### TC-17 — Performance Glitch User — Delayed Inventory Page Load
-
-**User:** `performance_glitch_user`  
-**Goal:** Verify that the inventory page eventually loads for `performance_glitch_user` despite an artificial delay.
-
-**Steps:**
-
-| # | Action | Expected Result |
-|---|--------|-----------------|
-| 1 | Log in as `performance_glitch_user` / `secret_sauce`. | After a noticeable delay, URL changes to `/inventory.html`. |
-| 2 | Inspect the inventory page. | All 6 product cards are eventually visible. Page is fully loaded and functional. The delay is expected behavior for this user type. |
+| 1 | Navigate to the detail page of the first product ("Sauce Labs Backpack"). | `[data-test="inventory-item-name"]` = **"Sauce Labs Backpack"**. `[data-test="inventory-item-price"]` = **"$29.99"**. No `[data-test="shopping-cart-badge"]` is visible. |
+| 2 | Click `[data-test="add-to-cart"]`. | `[data-test="shopping-cart-badge"]` appears and shows **"1"**. |
+| 3 | Click `[data-test="back-to-products"]`. | Returns to `/inventory.html`. Badge still shows **"1"**. `[data-test="remove-sauce-labs-backpack"]` button is visible on the product card. |
 
 ---
 
@@ -294,69 +300,73 @@
 
 ### TC-18 — Add a Single Item to Cart — Badge Updates to 1
 
+**Product:** `sauce-labs-backpack`  
 **Goal:** Verify that adding one product updates the cart badge to 1.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Land on `/inventory.html`. | No `[data-test="shopping-cart-badge"]` is visible (cart is empty). |
-| 2 | Click the "Add to cart" button on any product. | The button label changes to "Remove". `[data-test="shopping-cart-badge"]` appears and shows **"1"**. |
+| 1 | Land on `/inventory.html`. | `[data-test="shopping-cart-badge"]` is not visible. |
+| 2 | Click `[data-test="add-to-cart-sauce-labs-backpack"]`. | `[data-test="shopping-cart-badge"]` appears and shows **"1"**. `[data-test="remove-sauce-labs-backpack"]` button is visible. |
 
 ---
 
 ### TC-19 — Add Multiple Items — Badge Count Updates Correctly
 
-**Goal:** Verify that the cart badge count increments correctly as multiple items are added.
+**Products:** `sauce-labs-backpack` · `sauce-labs-bike-light` · `sauce-labs-bolt-t-shirt`  
+**Goal:** Verify that the cart badge increments correctly as multiple items are added.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Land on `/inventory.html`. | Cart badge is not visible. |
-| 2 | Click "Add to cart" on the first product. | Badge appears and shows "1". |
-| 3 | Click "Add to cart" on a second product. | Badge updates and shows "2". |
-| 4 | Click "Add to cart" on a third product. | Badge updates and shows "3". |
+| 1 | Click `[data-test="add-to-cart-sauce-labs-backpack"]`. | Badge shows **"1"**. |
+| 2 | Click `[data-test="add-to-cart-sauce-labs-bike-light"]`. | Badge shows **"2"**. |
+| 3 | Click `[data-test="add-to-cart-sauce-labs-bolt-t-shirt"]`. | Badge shows **"3"**. |
 
 ---
 
 ### TC-20 — Remove Item from Inventory Page
 
-**Goal:** Verify that clicking "Remove" on a product from the inventory page removes it from the cart and updates the badge.
+**Product:** `sauce-labs-backpack`  
+**Goal:** Verify that clicking "Remove" on a product card removes it from the cart and hides the badge.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add one product to the cart from `/inventory.html`. | Badge shows "1". The product button shows "Remove". |
-| 2 | Click the "Remove" button on the same product. | The button label changes back to "Add to cart". The badge disappears (cart is now empty). |
+| 1 | Add `sauce-labs-backpack` to the cart. | Badge shows **"1"**. Remove button is visible. |
+| 2 | Click `[data-test="remove-sauce-labs-backpack"]`. | Badge disappears. `[data-test="add-to-cart-sauce-labs-backpack"]` button is visible again. |
 
 ---
 
 ### TC-21 — Cart Page Displays Added Items Correctly
 
-**Goal:** Verify that the cart page lists all added items with the correct details.
+**Products:** `sauce-labs-backpack` · `sauce-labs-bike-light`  
+**Goal:** Verify that the cart page lists the correct items with names and prices matching `products.json`.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add 2 products to the cart from `/inventory.html`. | Badge shows "2". |
-| 2 | Click `[data-test="shopping-cart-link"]` in the header. | URL changes to `/cart.html`. `[data-test="cart-list"]` is visible. Both added products are listed. Each item shows: quantity ("1"), product name, description, and price. `[data-test="continue-shopping"]` and `[data-test="checkout"]` buttons are visible. |
+| 1 | Add `sauce-labs-backpack` and `sauce-labs-bike-light` to the cart. Click `[data-test="shopping-cart-link"]`. | URL changes to `/cart.html`. `[data-test="cart-list"]` contains exactly 2 `.cart_item` rows. |
+| 2 | Assert item names and prices from `[data-test="cart-list"]`. | Names (in order): **"Sauce Labs Backpack"**, **"Sauce Labs Bike Light"**. Prices: **"$29.99"**, **"$9.99"**. `[data-test="continue-shopping"]` and `[data-test="checkout"]` are visible. |
 
 ---
 
 ### TC-22 — Remove Item from Cart Page
 
-**Goal:** Verify that clicking "Remove" from the cart page removes the item and updates the badge.
+**Products:** `sauce-labs-backpack` · `sauce-labs-bike-light`  
+**Goal:** Verify that items can be removed one by one from the cart page.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add 2 items to the cart. Navigate to `/cart.html`. | Both items are listed. Badge shows "2". |
-| 2 | Click `[data-test="remove-{product-name}"]` on one of the items. | That item is removed from the cart list. Badge updates to "1". |
-| 3 | Click the Remove button on the remaining item. | Cart list is empty. Badge disappears. |
+| 1 | Add both products. Navigate to `/cart.html`. | Cart shows 2 items. Badge shows **"2"**. |
+| 2 | Click the first `[data-test^="remove-"]` button. | Cart shows 1 item. Badge shows **"1"**. |
+| 3 | Click the remaining `[data-test^="remove-"]` button. | Cart is empty. Badge disappears. |
 
 ---
 
@@ -368,113 +378,126 @@
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Ensure no items are in the cart. Navigate to `/cart.html`. | `[data-test="cart-list"]` is visible but contains no product rows. Column headers (QTY, Description) are still visible. No cart badge appears in the header. `[data-test="continue-shopping"]` and `[data-test="checkout"]` buttons are visible. |
+| 1 | Navigate to `/cart.html` with no items in cart. | `[data-test="cart-list"]` is visible but contains 0 `.cart_item` rows. No badge in the header. `[data-test="continue-shopping"]` and `[data-test="checkout"]` are visible. |
 
 ---
 
 ### TC-24 — Continue Shopping Returns to Inventory
 
-**Goal:** Verify that clicking "Continue Shopping" from the cart page returns the user to the inventory.
+**Product:** `sauce-labs-backpack`  
+**Goal:** Verify that clicking "Continue Shopping" from the cart page returns the user to the inventory with the cart state preserved.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add an item and navigate to `/cart.html`. | Cart page is visible with the added item. |
-| 2 | Click `[data-test="continue-shopping"]`. | URL returns to `/inventory.html`. The product grid is displayed. Previously added item still shows "Remove" button. Badge still shows the correct count. |
+| 1 | Add `sauce-labs-backpack` to the cart. Navigate to `/cart.html`. Click `[data-test="continue-shopping"]`. | URL returns to `/inventory.html`. Six product cards visible. Badge shows **"1"**. `[data-test="remove-sauce-labs-backpack"]` is visible. |
 
 ---
 
 ## Suite 4: Checkout
 
-> **Precondition for all TC in this suite:** User is logged in as `standard_user`, has at least one item in the cart, and is on `/cart.html`, unless stated otherwise.
+> **Precondition for all TC in this suite:** User is logged in as `standard_user`, has added `sauce-labs-backpack` to the cart, and has navigated to `/cart.html`, unless stated otherwise.  
+> **Form data source:** `checkoutForms.standard` = `{ firstName: "John", lastName: "Doe", postalCode: "12345" }`.
 
 ---
 
 ### TC-25 — Complete Checkout Happy Path
 
-**User:** `standard_user`  
 **Goal:** Verify the full 3-step checkout flow completes successfully.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add one item to the cart. Navigate to `/cart.html`. | Item is listed. |
-| 2 | Click `[data-test="checkout"]`. | URL changes to `/checkout-step-one.html`. Form with `[data-test="firstName"]`, `[data-test="lastName"]`, and `[data-test="postalCode"]` fields is visible. Cancel and Continue buttons are present. |
-| 3 | Fill `[data-test="firstName"]` with `John`. Fill `[data-test="lastName"]` with `Doe`. Fill `[data-test="postalCode"]` with `12345`. | All fields are filled. |
-| 4 | Click `[data-test="continue"]`. | URL changes to `/checkout-step-two.html`. Order summary container `[data-test="checkout-summary-container"]` is visible. The added item is listed. Payment info, shipping info, item subtotal, tax, and total are shown. Finish and Cancel buttons are present. |
-| 5 | Click `[data-test="finish"]`. | URL changes to `/checkout-complete.html`. `[data-test="complete-header"]` shows **"Thank you for your order!"**. `[data-test="complete-text"]` shows the dispatch confirmation message. Pony Express image is visible. `[data-test="back-to-products"]` button is visible. Cart badge is gone. |
-| 6 | Click `[data-test="back-to-products"]`. | URL returns to `/inventory.html`. Cart is empty. No badge shown. |
+| 1 | Click `[data-test="checkout"]` from the cart page. | URL changes to `/checkout-step-one.html`. Form with firstName, lastName, postalCode fields is visible. |
+| 2 | Fill the form with `checkoutForms.standard`. Click `[data-test="continue"]`. | URL changes to `/checkout-step-two.html`. Order summary container is visible. Subtotal, tax, and total labels are present. |
+| 3 | Click `[data-test="finish"]`. | URL changes to `/checkout-complete.html`. `[data-test="complete-header"]` shows **"Thank you for your order!"**. `[data-test="complete-text"]` is visible. `[data-test="back-to-products"]` is visible. Cart badge is gone. |
+| 4 | Click `[data-test="back-to-products"]`. | URL returns to `/inventory.html`. Cart is empty. No badge shown. |
 
 ---
 
-### TC-26 — Checkout Step 1 — Required Field Validations (First Name, Last Name, Zip)
+### TC-26 — Checkout Step 1 — Required Field Validations
 
-**Goal:** Verify that each required field on the customer info form shows the correct error message when left empty. All three validations are tested sequentially in a single browser session on the same page.
+**Goal:** Verify that each required field shows the correct error when left empty. All three validations are tested sequentially in the same session.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Navigate to `/checkout-step-one.html`. | Form is visible with all three fields empty. Cancel and Continue buttons are present. |
-| 2 | Leave `[data-test="firstName"]` empty. Fill `[data-test="lastName"]` with `Doe`. Fill `[data-test="postalCode"]` with `12345`. Click `[data-test="continue"]`. | URL remains on `/checkout-step-one.html`. Error banner `[data-test="error"]` is visible with text: **"Error: First Name is required"**. |
-| 3 | Close the error banner. Clear all fields. Fill `[data-test="firstName"]` with `John`. Leave `[data-test="lastName"]` empty. Fill `[data-test="postalCode"]` with `12345`. Click `[data-test="continue"]`. | URL remains on `/checkout-step-one.html`. Error banner is visible with text: **"Error: Last Name is required"**. |
-| 4 | Close the error banner. Clear all fields. Fill `[data-test="firstName"]` with `John`. Fill `[data-test="lastName"]` with `Doe`. Leave `[data-test="postalCode"]` empty. Click `[data-test="continue"]`. | URL remains on `/checkout-step-one.html`. Error banner is visible with text: **"Error: Postal Code is required"**. |
+| 1 | Fill form with `{ ...checkoutForms.standard, firstName: "" }`. Click `[data-test="continue"]`. | Error banner shows: **"Error: First Name is required"**. |
+| 2 | Dismiss error. Clear all fields. Fill with `{ ...checkoutForms.standard, lastName: "" }`. Click `[data-test="continue"]`. | Error banner shows: **"Error: Last Name is required"**. |
+| 3 | Dismiss error. Clear all fields. Fill with `{ ...checkoutForms.standard, postalCode: "" }`. Click `[data-test="continue"]`. | Error banner shows: **"Error: Postal Code is required"**. |
 
 ---
 
 ### TC-27 — Checkout Step 2 — Order Summary Price Breakdown
 
-**Goal:** Verify that the order summary on Step 2 correctly displays item subtotal, tax, and total.
+**Goal:** Verify that the subtotal on the summary page matches the known product price and that total = subtotal + tax.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add one item to the cart. Navigate through Step 1 with valid customer info. Land on `/checkout-step-two.html`. | Order summary is displayed. |
-| 2 | Inspect the price breakdown. | `[data-test="subtotal-label"]` shows the correct item total (sum of item prices). `[data-test="tax-label"]` shows a calculated tax value. `[data-test="total-label"]` shows the grand total (subtotal + tax). Payment info shows "SauceCard #31337". Shipping info shows "Free Pony Express Delivery!". |
+| 1 | Complete Step 1 with `checkoutForms.standard`. Land on `/checkout-step-two.html`. | Order summary is displayed. |
+| 2 | Read `[data-test="subtotal-label"]`, `[data-test="tax-label"]`, `[data-test="total-label"]`. | `subtotal` = **$29.99** (matches `products[0].price` from `products.json`). `total` ≈ `subtotal + tax` (within 2 decimal places). `[data-test="finish"]` is visible. |
 
 ---
 
 ### TC-28 — Cancel Checkout from Step 1 Returns to Cart
 
-**Goal:** Verify that cancelling from Step 1 brings the user back to the cart without losing cart contents.
+**Goal:** Verify that cancelling from Step 1 returns the user to the cart without losing cart contents.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add one item to the cart. Navigate to `/checkout-step-one.html`. | Step 1 form is visible. |
-| 2 | Click `[data-test="cancel"]`. | URL returns to `/cart.html`. The previously added item is still listed in the cart. Badge still shows the correct count. |
+| 1 | Click `[data-test="checkout"]`. Land on `/checkout-step-one.html`. Click `[data-test="cancel"]`. | URL returns to `/cart.html`. Cart still contains 1 item. Badge shows **"1"**. |
 
 ---
 
 ### TC-29 — Cancel Checkout from Step 2 Returns to Inventory
 
-**Goal:** Verify that cancelling from Step 2 (overview) brings the user back to the inventory.
+**Goal:** Verify that cancelling from Step 2 returns the user to the inventory with cart contents preserved.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Add one item. Complete Step 1 with valid info. Land on `/checkout-step-two.html`. | Order summary is visible. |
-| 2 | Click `[data-test="cancel"]`. | URL returns to `/inventory.html`. Cart still contains the item. Badge shows correct count. |
+| 1 | Complete Step 1. Land on `/checkout-step-two.html`. Click `[data-test="cancel"]`. | URL returns to `/inventory.html`. Cart still has 1 item. Badge shows **"1"**. |
 
 ---
 
-### TC-30 — Error User — Intermittent Checkout Form Errors
+### TC-30 — Error User — Checkout Triggers Telemetry Error (Fail on Purpose)
 
 **User:** `error_user`  
-**Goal:** Verify that `error_user` encounters form-level errors during checkout that do not occur for `standard_user`.
+**Goal:** Verify that `error_user` triggers a 503 response to `submit.backtrace.io` during the `finish()` action. The framework logs this as a warning. The checkout does NOT complete, demonstrating a known defect for this user type.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Log in as `error_user` / `secret_sauce`. Add one item to the cart. Navigate to `/checkout-step-one.html`. | Step 1 form is visible. |
-| 2 | Fill all checkout fields with valid data: First Name, Last Name, Zip Code. Click `[data-test="continue"]`. | An error may appear on the form or one of the input fields may not accept input as expected. Errors are intermittent — the same action that fails once may succeed on a retry. |
-| 3 | Observe behavior across multiple attempts. | At least one interaction during the checkout flow (field input or form submission) fails in a way that does not occur for `standard_user`. Errors should be specific and actionable (e.g., a field not accepting input, a validation error on a pre-filled field). |
+| 1 | Log in as `error_user`. Add one item to cart. Complete Step 1 with `checkoutForms.standard`. Land on `/checkout-step-two.html`. | Step 2 summary is visible. |
+| 2 | Click `[data-test="finish"]`. | A `POST` to `https://submit.backtrace.io/…/json` fires and receives a **503** response. The framework logs: `[warn] CheckoutStep2: error telemetry returned 503 — fault injection active (error_user)`. URL does **not** change to `/checkout-complete.html` — the checkout is blocked. |
+
+> **Expected test result:** FAIL (intentional). This test documents the defect and demonstrates the framework's error telemetry logging. `standard_user` completing the same flow (TC-25) is the passing baseline.
+
+---
+
+### TC-34 — Checkout with Multiple Products — Subtotal Matches Sum of Item Prices
+
+**Products:** `sauce-labs-backpack` ($29.99) · `sauce-labs-bike-light` ($9.99) · `sauce-labs-bolt-t-shirt` ($15.99)  
+**Goal:** Verify that the checkout summary correctly reflects the combined price of three products added to the cart.
+
+**Steps:**
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | Add `sauce-labs-backpack`, `sauce-labs-bike-light`, and `sauce-labs-bolt-t-shirt` to the cart. | Badge shows **"3"**. |
+| 2 | Navigate to `/cart.html`. | Cart contains exactly 3 `.cart_item` rows. |
+| 3 | Click `[data-test="checkout"]`. Fill form with `checkoutForms.standard`. Click `[data-test="continue"]`. | URL changes to `/checkout-step-two.html`. |
+| 4 | Assert item count and prices in the summary. | Summary contains exactly **3** `.cart_item` rows. `subtotal` ≈ **$55.97** (29.99 + 9.99 + 15.99, calculated from `products.json`). `total` ≈ `subtotal + tax`. |
+| 5 | Click `[data-test="finish"]`. | URL changes to `/checkout-complete.html`. `[data-test="complete-header"]` shows **"Thank you for your order!"**. Cart badge is gone. |
 
 ---
 
@@ -492,8 +515,8 @@
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Click `[data-test="open-menu"]` (hamburger icon) in the top-left header. | A sidebar navigation drawer opens. Menu items are visible: "All Items", "About", "Logout", "Reset App State". |
-| 2 | Click `[data-test="logout-sidebar-link"]`. | URL changes to `https://www.saucedemo.com/`. Both username and password fields are empty. No error banner is visible. The Login button is visible. |
+| 1 | Click `#react-burger-menu-btn` in the top-left header. | Sidebar drawer opens. `[data-test="logout-sidebar-link"]` is visible. |
+| 2 | Click `[data-test="logout-sidebar-link"]`. | URL changes to `https://www.saucedemo.com/`. Both `[data-test="username"]` and `[data-test="password"]` fields are empty. Login button is visible. No error banner is shown. |
 
 ---
 
@@ -505,33 +528,49 @@
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Log out via the burger menu. | URL is on `/`. |
-| 2 | Navigate directly to `https://www.saucedemo.com/inventory.html`. | User is redirected to `/`. Error banner `[data-test="error"]` is visible with text: **"Epic sadface: You can only access '/inventory.html' when you are logged in."** |
-| 3 | Navigate directly to `https://www.saucedemo.com/cart.html`. | User is redirected to `/`. An appropriate "not logged in" error message is displayed. |
+| 1 | Log out via the burger menu. URL is on `/`. | Session is cleared. |
+| 2 | Navigate directly to `https://www.saucedemo.com/inventory.html`. | Redirected to `/`. Error banner shows: **"Epic sadface: You can only access '/inventory.html' when you are logged in."** |
+| 3 | Navigate directly to `https://www.saucedemo.com/cart.html`. | Redirected to `/`. Error banner is visible. |
 
 ---
 
 ### TC-33 — Browser Back Button After Logout Does Not Restore Session
 
-**Goal:** Verify that pressing the browser back button after logout does not allow re-entry into the application.
+**Goal:** Verify that pressing the browser back button after logout does not re-enter the application.
 
 **Steps:**
 
 | # | Action | Expected Result |
 |---|--------|-----------------|
-| 1 | Log in as `standard_user`. Navigate to `/inventory.html`. | User is on the inventory page. |
-| 2 | Log out via the burger menu. | URL returns to `/`. |
-| 3 | Press the browser Back button. | The application does not navigate back into the inventory page. The user remains on the login page or is immediately redirected back to it. Session is fully invalidated. |
+| 1 | Log out via the burger menu. URL is on `/`. | Session is cleared. |
+| 2 | Press the browser Back button. | Application does not navigate back to the inventory. User remains on the login page. Session is fully invalidated. |
+
+---
+
+### TC-38 — Session Cookie Is Cleared After Logout
+
+**User:** `standard_user`  
+**Goal:** Verify that logging out removes the `session-username` cookie from the browser context, fully invalidating the client-side session.
+
+**Steps:**
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | Log in as `standard_user` and land on `/inventory.html`. Inspect the browser context cookies. | Cookie `session-username` is present with value **`standard_user`**. |
+| 2 | Open the burger menu and click `[data-test="logout-sidebar-link"]`. | URL changes to `/`. |
+| 3 | Inspect the browser context cookies again. | Cookie `session-username` is no longer present in the context. |
 
 ---
 
 ## Summary
 
-| Suite | # Cases |
-|-------|---------|
-| Suite 1 — Login / Auth | 8 |
-| Suite 2 — Product Catalogue | 9 |
-| Suite 3 — Cart | 7 |
-| Suite 4 — Checkout | 6 |
-| Suite 5 — Logout | 3 |
-| **Total** | **33** |
+| Suite | TC IDs | # Cases |
+|-------|--------|---------|
+| Suite 1 — Login / Auth | TC-01, TC-02, TC-03, TC-04, TC-05, TC-06, TC-08, TC-35, TC-36, TC-37 | 10 |
+| Suite 2 — Product Catalogue | TC-09, TC-10, TC-11, TC-12, TC-13, TC-14, TC-15 | 7 |
+| Suite 3 — Cart | TC-18, TC-19, TC-20, TC-21, TC-22, TC-23, TC-24 | 7 |
+| Suite 4 — Checkout | TC-25, TC-26, TC-27, TC-28, TC-29, TC-30, TC-34 | 7 |
+| Suite 5 — Logout | TC-31, TC-32, TC-33, TC-38 | 4 |
+| **Total** | | **35** |
+
+> **Removed test cases:** TC-07 (merged into TC-01 as parametrized run for `performance_glitch_user`). TC-16 and TC-17 (replaced by the `problem_user` run of TC-09 with visual regression comparison).

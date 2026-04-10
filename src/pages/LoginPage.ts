@@ -1,6 +1,6 @@
-import { Page, Locator } from '@playwright/test';
-import { logger } from '../utils/logger';
-import { BasePage } from './BasePage';
+import { Page, Locator } from "@playwright/test";
+import { logger } from "../utils/logger";
+import { BasePage } from "./BasePage";
 
 export class LoginPage extends BasePage {
   readonly username: Locator;
@@ -19,19 +19,19 @@ export class LoginPage extends BasePage {
   }
 
   async goto(): Promise<void> {
-    logger.debug('LoginPage: navigating to login page');
-    await this.page.goto('/');
+    logger.debug("LoginPage: navigating to login page");
+    await this.page.goto("/");
   }
 
   async login(username: string, password: string): Promise<void> {
     logger.info(`LoginPage: attempting login as "${username}"`);
-    await this.safeFill(this.username, username, 'username');
-    await this.safeFill(this.password, password, 'password');
-    await this.safeClick(this.loginButton, 'login-button');
+    await this.safeFill(this.username, username, "username");
+    await this.safeFill(this.password, password, "password");
+    await this.safeClick(this.loginButton, "login-button");
   }
 
   async dismissError(): Promise<void> {
-    logger.debug('LoginPage: dismissing error banner');
-    await this.safeClick(this.errorDismiss, 'error-dismiss');
+    logger.debug("LoginPage: dismissing error banner");
+    await this.safeClick(this.errorDismiss, "error-dismiss");
   }
 }

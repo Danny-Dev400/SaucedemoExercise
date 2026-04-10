@@ -1,6 +1,6 @@
-import { Page, Locator } from '@playwright/test';
-import { Header } from './components/Header';
-import { BasePage } from './BasePage';
+import { Page, Locator } from "@playwright/test";
+import { Header } from "./components/Header";
+import { BasePage } from "./BasePage";
 
 export class ProductDetailPage extends BasePage {
   readonly header: Header;
@@ -21,10 +21,10 @@ export class ProductDetailPage extends BasePage {
   }
 
   async addToCart(): Promise<void> {
-    await this.safeClick(this.addToCartButton, 'add-to-cart');
+    await this.safeClick(this.addToCartButton, "add-to-cart");
   }
 
   async back(): Promise<void> {
-    await this.safeClick(this.backButton, 'back-to-products');
+    await this.safeClick(this.backButton, "back-to-products");
   }
 }

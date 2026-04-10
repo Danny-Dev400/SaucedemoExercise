@@ -1,5 +1,5 @@
-import { Page, Locator } from '@playwright/test';
-import { BasePage } from '../BasePage';
+import { Page, Locator } from "@playwright/test";
+import { BasePage } from "../BasePage";
 
 export class Header extends BasePage {
   readonly cartBadge: Locator;
@@ -10,14 +10,14 @@ export class Header extends BasePage {
     super(page);
     this.cartBadge = page.locator('[data-test="shopping-cart-badge"]');
     this.cartLink = page.locator('[data-test="shopping-cart-link"]');
-    this.burgerMenuButton = page.locator('#react-burger-menu-btn');
+    this.burgerMenuButton = page.locator("#react-burger-menu-btn");
   }
 
   async openCart(): Promise<void> {
-    await this.safeClick(this.cartLink, 'cart-link');
+    await this.safeClick(this.cartLink, "cart-link");
   }
 
   async openMenu(): Promise<void> {
-    await this.safeClick(this.burgerMenuButton, 'burger-menu');
+    await this.safeClick(this.burgerMenuButton, "burger-menu");
   }
 }

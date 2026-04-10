@@ -1,4 +1,4 @@
-import rawUsers from '../data/users.json';
+import rawUsers from "../data/users.json";
 
 export interface UserCredentials {
   username: string;

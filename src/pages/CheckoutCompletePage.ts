@@ -1,6 +1,6 @@
-import { Page, Locator } from '@playwright/test';
-import { Header } from './components/Header';
-import { BasePage } from './BasePage';
+import { Page, Locator } from "@playwright/test";
+import { Header } from "./components/Header";
+import { BasePage } from "./BasePage";
 
 export class CheckoutCompletePage extends BasePage {
   readonly header: Header;
@@ -17,6 +17,6 @@ export class CheckoutCompletePage extends BasePage {
   }
 
   async backToProducts(): Promise<void> {
-    await this.safeClick(this.backButton, 'back-to-products');
+    await this.safeClick(this.backButton, "back-to-products");
   }
 }

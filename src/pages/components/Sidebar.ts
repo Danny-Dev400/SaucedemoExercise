@@ -1,6 +1,6 @@
-import { Page, Locator } from '@playwright/test';
-import { logger } from '../../utils/logger';
-import { BasePage } from '../BasePage';
+import { Page, Locator } from "@playwright/test";
+import { logger } from "../../utils/logger";
+import { BasePage } from "../BasePage";
 
 export class Sidebar extends BasePage {
   readonly logoutLink: Locator;
@@ -11,7 +11,7 @@ export class Sidebar extends BasePage {
   }
 
   async logout(): Promise<void> {
-    logger.info('Sidebar: logging out');
-    await this.safeClick(this.logoutLink, 'logout-link');
+    logger.info("Sidebar: logging out");
+    await this.safeClick(this.logoutLink, "logout-link");
   }
 }

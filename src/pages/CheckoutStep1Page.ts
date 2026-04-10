@@ -1,7 +1,7 @@
-import { Page, Locator } from '@playwright/test';
-import { logger } from '../utils/logger';
-import { BasePage } from './BasePage';
-import type { CheckoutFormData } from '../models/CheckoutForm';
+import { Page, Locator } from "@playwright/test";
+import { logger } from "../utils/logger";
+import { BasePage } from "./BasePage";
+import type { CheckoutFormData } from "../models/CheckoutForm";
 
 export class CheckoutStep1Page extends BasePage {
   readonly firstName: Locator;
@@ -24,10 +24,12 @@ export class CheckoutStep1Page extends BasePage {
   }
 
   async fill(data: CheckoutFormData): Promise<void> {
-    logger.info(`CheckoutStep1: filling form — "${data.firstName} ${data.lastName}", zip: "${data.postalCode}"`);
-    await this.safeFill(this.firstName, data.firstName, 'firstName');
-    await this.safeFill(this.lastName, data.lastName, 'lastName');
-    await this.safeFill(this.postalCode, data.postalCode, 'postalCode');
+    logger.info(
+      `CheckoutStep1: filling form — "${data.firstName} ${data.lastName}", zip: "${data.postalCode}"`,
+    );
+    await this.safeFill(this.firstName, data.firstName, "firstName");
+    await this.safeFill(this.lastName, data.lastName, "lastName");
+    await this.safeFill(this.postalCode, data.postalCode, "postalCode");
   }
 
   async clearAll(): Promise<void> {
@@ -37,14 +39,14 @@ export class CheckoutStep1Page extends BasePage {
   }
 
   async continue(): Promise<void> {
-    await this.safeClick(this.continueButton, 'continue');
+    await this.safeClick(this.continueButton, "continue");
   }
 
   async cancel(): Promise<void> {
-    await this.safeClick(this.cancelButton, 'cancel');
+    await this.safeClick(this.cancelButton, "cancel");
   }
 
   async dismissError(): Promise<void> {
-    await this.safeClick(this.errorDismiss, 'error-dismiss');
+    await this.safeClick(this.errorDismiss, "error-dismiss");
   }
 }
