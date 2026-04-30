@@ -29,10 +29,6 @@ steps:
     testResultsFiles: '**/results.xml'
   condition: succeededOrFailed()
 
-- task: PublishPipelineArtifact@1
-  displayName: '6. Publish Playwright HTML report'
+- task: UploadPlaywrightReport@1
   inputs:
-    targetPath: 'playwright-report/' # Default Playwright report folder
-    artifact: 'Playwright-HTML-Report'
-    publishLocation: 'pipeline'
-  condition: succeededOrFailed()
+    reportPath: 'playwright-report'
