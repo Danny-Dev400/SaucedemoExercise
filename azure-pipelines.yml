@@ -1,0 +1,38 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '20.x'
+  displayName: '1. Install Node.js'
+
+- script: npm ci
+  displayName: '2. Install dependencies (package-lock.json)'
+
+- script: npx playwright install --with-deps
+  displayName: '3. Install browsers and OS dependencies'
+
+- script: npx playwright test
+  displayName: '4. Run Playwright tests'
+  env:
+    CI: 'true'
+  continueOnError: true # Allows the pipeline to continue publishing the report even if tests fail
+
+- task: PublishTestResults@2
+  displayName: '5. Publish test results to Tests tab (JUnit)'
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/results.xml'
+  condition: succeededOrFailed()
+
+- task: PublishPipelineArtifact@1
+  displayName: '6. Publish Playwright HTML report'
+  inputs:
+    targetPath: 'playwright-report/' # Default Playwright report folder
+    artifact: 'Playwright-HTML-Report'
+    publishLocation: 'pipeline'
+  condition: succeededOrFailed()

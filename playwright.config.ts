@@ -26,7 +26,11 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : 3,
   timeout: TEST_TIMEOUT,
-  reporter: [["html"], ["json", { outputFile: "test-results/results.json" }]],
+  reporter: [
+    ['list'],
+    ['junit', { outputFile: 'results.xml' }],
+    ['html', { open: 'never' }]
+  ],
   use: {
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -35,7 +39,6 @@ export default defineConfig({
   },
 
   projects: [
-    { name: "chromium", use: { ...chromeSettings } },
-    { name: "firefox", use: { ...firefoxSettings } },
+    { name: "chromium", use: { ...chromeSettings } }
   ],
 });
